@@ -1,8 +1,9 @@
-GIT_ROOT=.
-GIT_EMAIL=55534323+yukikurage@users.noreply.github.com
-GIT_NAME=yukikurage
+# 開始時に決めるもの
+# systemctlのサービス名に使う
+PROJECT=isucondition
 
-PROJECT=isuumo
+NGINX_CONFIG=/etc/nginx/nginx.conf
+MYSQLD_CONFIG=/etc/mysql/mariadb.conf.d/50-server.cnf
 
 NGINX_LOG=/var/log/nginx/access.log
 
@@ -16,14 +17,18 @@ DB_NAME=$(PROJECT)
 
 SLOW_LOG=/var/log/mysql/mysql-slow.log
 
-SLACKCAT_CNL=isucon
-
 LOGS_DIR=/etc/logs
+
+GIT_ROOT=/home/isucon/webapp
+
+# 開始前に決めるもの
+GIT_EMAIL=daiusa3@icloud.com
+GIT_NAME="Daiki Usami"
 
 DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/932953641252446238/a9k7cAOO0V0QFZBaURgdgxFnfVVNrNYOgKhpVh_8Q146oTMscx3kvYPwU2Ar10tqd0HX
 
-NGINX_CONFIG=/etc/nginx/nginx.conf
-MYSQLD_CONFIG=/etc/mysql/mysql.conf.d/mysqld.cnf
+SLACKCAT_CNL=isucon
+
 #################################################################################
 PPROF=go tool pprof
 KATARIBE=kataribe -f $(KATARIBE_CFG)
@@ -32,26 +37,16 @@ SLACKCAT=slackcat --channel $(SLACKCAT_CNL)
 WHEN:=$(shell date +%H:%M:%S)
 #################################################################################
 
+.PHONY: setup
+setup: install-tools pull-link
+
 .PHONY: pullres
 pullres: pull restart
 
-.PHONY: pull
-pull:
-	cd $(GIT_ROOT) && \
-		git pull origin master
-
-.PHONY: commit
-commit:
-	cd $(GIT_ROOT) && \
-		git commit -a
-
-.PHONY: push
-push:
-	cd $(GIT_ROOT) && \
-		git push
-
 .PHONY: restart
 restart: restart-nginx restart-mysql restart-app
+
+################################################################################
 
 .PHONY: restart-app
 restart-app:
@@ -70,20 +65,39 @@ restart-mysql: copy-config-mysqld
 	sudo rm -f $(SLOW_LOG)
 	sudo systemctl restart mysql
 
-##########################################################################################
+.PHONY: pull-link
+pull-link: link-nginx link-mysql
 
-.PHONY: copy-config
-copy-config: copy-config-nginx copy-config-mysqld
+.PHONY: link-nginx
+link-nginx:
+	sudo cp $(NGINX_CONFIG) $(GIT_ROOT)/nginx.conf
+	sudo rm $(NGINX_CONFIG)
+	sudo ln -s $(GIT_ROOT)/nginx.conf $(NGINX_CONFIG)
 
-.PHONY: copy-config-nginx
-copy-config-nginx:
-	sudo cp nginx.conf $(NGINX_CONFIG)
+.PHONY: link-mysql
+link-mysql:
+	sudo cp $(MYSQLD_CONFIG) $(GIT_ROOT)/mysqld.cnf
+	sudo rm $(MYSQLD_CONFIG)
+	sudo ln -s $(GIT_ROOT)/mysqld.cnf $(MYSQLD_CONFIG)
 
-.PHONY: copy-config-mysqld
-copy-config-mysqld:
-	sudo cp mysqld.cnf $(MYSQLD_CONFIG)
+################################################################################
 
-##########################################################################################
+.PHONY: pull
+pull:
+	cd $(GIT_ROOT) && \
+		git pull origin master
+
+.PHONY: commit
+commit:
+	cd $(GIT_ROOT) && \
+		git commit -a
+
+.PHONY: push
+push:
+	cd $(GIT_ROOT) && \
+		git push
+
+################################################################################
 
 .PHONY: dstat
 dstat:
@@ -170,3 +184,4 @@ install-slackcat:
 	rm -f slackcat
 	sudo chmod +x /usr/local/bin/slackcat
 	slackcat --configure
+
