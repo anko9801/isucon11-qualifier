@@ -120,7 +120,7 @@ pprof:
 
 .PHONY: slow
 slow:
-	sudo mysqldumpslow -s t -t 10 > ~/temp/slowdump.txt
+	sudo mysqldumpslow -s t -t 30 > $(HOME)/temp/slowdump.txt
 	# | curl -X POST -H "Content-Type: application/json" -d "{\"content\":\"$(cat)\"}" $(DISCORD_WEBHOOK_URL)
 	curl -X POST -F txt=@$(HOME)/temp/slowdump.txt $(DISCORD_WEBHOOK_URL) -s -o /dev/null
 
