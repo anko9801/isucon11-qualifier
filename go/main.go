@@ -244,7 +244,16 @@ func main() {
 		return
 	}
 	db.SetMaxOpenConns(100)
+	db.SetConnMaxLifetime(0)
+	db.SetConnMaxIdleTime(0)
 	defer db.Close()
+
+	// goroutineを生やしすぎてもタイムアウトする https://www.sambaiz.net/article/61/
+	// Keep-AliveするとTCPコネクションを使い回し、名前解決やコネクション(3 way handshake)を毎回行わなくてよくなる
+	http.DefaultTransport.(*http.Transport).MaxIdleConns = 0 // 無制限 デフォルトだと100
+	http.DefaultTransport.(*http.Transport).MaxIdleConnsPerHost = 1024 // 0にすると2になっちゃう
+	http.DefaultTransport.(*http.Transport).ForceAttemptHTTP2 = true // go1.13以上
+	http.DefaultClient.Timeout = 5 * time.Second // 問題の切り分け用
 
 	postIsuConditionTargetBaseURL = os.Getenv("POST_ISUCONDITION_TARGET_BASE_URL")
 	if postIsuConditionTargetBaseURL == "" {
