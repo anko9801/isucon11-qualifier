@@ -25,6 +25,7 @@ lc-messages-dir         = /usr/share/mysql
 
 # Instead of skip-networking the default is now to listen only on
 # localhost which is more compatible and is not less secure.
+# なぜか0.0.0.0だとだめ
 bind-address            = 127.0.0.1
 
 #
@@ -37,7 +38,7 @@ bind-address            = 127.0.0.1
 # This replaces the startup script and checks MyISAM tables if needed
 # the first time they are touched
 #myisam_recover_options = BACKUP
-#max_connections        = 100
+max_connections        = 1024
 #table_cache            = 64
 #thread_concurrency     = 10
 
@@ -45,6 +46,7 @@ bind-address            = 127.0.0.1
 # * Query Cache Configuration
 #
 #query_cache_limit      = 1M
+query_cahce_type        = ON
 query_cache_size        = 16M
 
 #
@@ -61,11 +63,13 @@ query_cache_size        = 16M
 log_error = /var/log/mysql/error.log
 #
 # Enable the slow query log to see queries with especially long duration
-#slow_query_log_file    = /var/log/mysql/mariadb-slow.log
-#long_query_time        = 10
-#log_slow_rate_limit    = 1000
-#log_slow_verbosity     = query_plan
-#log-queries-not-using-indexes
+slow_query_log=ON
+log_output=FILE
+slow_query_log_file    = "/var/log/mysql/mariadb-slow.log"
+long_query_time        = 0
+# log_slow_rate_limit    = 1000
+# log_slow_verbosity     = query_plan
+log_queries_not_using_indexes = 1 # インデックスを使っていないクエリも出力する
 #
 # The following can be used as easy to replay backup logs or for replication.
 # note: if you are setting up a replication slave, see README.Debian about
@@ -109,6 +113,27 @@ collation-server      = utf8mb4_general_ci
 #
 # InnoDB is enabled by default with a 10MB datafile in /var/lib/mysql/.
 # Read the manual for more InnoDB related options. There are many!
+
+# innoDB全体で一つ生成されるグローバルバッファ(別鯖なら搭載メモリの80%)
+innodb_buffer_pool_size = 1GB
+# InnoDBの内部データなどを保持する足りないとエラーログが出るからその時増やす
+#innodb_additional_mem_pool_size = 30MB ←これあるとダメ
+# innoDBの更新ログを保持するメモリ
+innodb_log_buffer_size = 16MB
+# innodb_log_fileがいっぱいになると、メモリ上のinnodb_buffer_poolの中の更新された部分のデータを、ディスク上のInnoDBのデータファイルに書き出すしくみになっているから
+innodb_log_file_size = 128MB
+# ORDER BYやGROUP BYのときに使われるメモリ上の領域
+innodb_sort_buffer_size = 4MB
+read_rnd_buffer_size = 2MB # 
+key_buffer_size = 256MB
+# 1に設定するとトランザクション単位でログを出力するが 2 を指定すると1秒間に1回ログを吐く。0だとログも1秒に1回。TODO違いをみる
+innodb_flush_log_at_trx_commit = 0
+# innodb_flush_log_at_trx_commit = 2
+# データファイル、ログファイルの読み書き方式を指定する(実験する価値はある)
+innodb_flush_method = O_DIRECT
+# 再起動試験対策
+innodb_buffer_pool_dump_at_shutdown = ON
+innodb_buffer_pool_load_at_startup = ON
 
 #
 # * Unix socket authentication plugin is built-in since 10.0.22-6

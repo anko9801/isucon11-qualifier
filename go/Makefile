@@ -15,7 +15,7 @@ DB_USER=isucon
 DB_PASS=isucon
 DB_NAME=$(PROJECT)
 
-SLOW_LOG=/var/log/mysql/mysql-slow.log
+SLOW_LOG=/var/log/mysql/mariadb-slow.log
 
 LOGS_DIR=/etc/logs
 
@@ -25,7 +25,7 @@ GIT_ROOT=/home/isucon/webapp
 GIT_EMAIL=daiusa3@icloud.com
 GIT_NAME="Daiki Usami"
 
-DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/932953641252446238/a9k7cAOO0V0QFZBaURgdgxFnfVVNrNYOgKhpVh_8Q146oTMscx3kvYPwU2Ar10tqd0HX
+DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/934516652882673664/Aioc3f-YBWSCnl3L7lBqPiL388cGld5lPRDOahaIneOnh4c9nimB1nCng6OXlckueLVw
 
 SLACKCAT_CNL=isucon
 
@@ -40,30 +40,32 @@ WHEN:=$(shell date +%H:%M:%S)
 .PHONY: setup
 setup: install-tools pull-link
 
-.PHONY: pullres
-pullres: pull restart
+.PHONY: pullbuild
+pullres: pull build
 
-.PHONY: restart
-restart: restart-nginx restart-mysql restart-app
+.PHONY: build
+build: restart-nginx restart-mysql restart-app
 
 ################################################################################
 
 .PHONY: restart-app
 restart-app:
-	cd ~/$(PROJECT)/webapp/go && make all
+	cd ~/webapp/go && go build
 	sudo systemctl restart $(PROJECT).go.service
 
 .PHONY: restart-nginx
-restart-nginx: copy-config-nginx
+restart-nginx:
 	sudo rm -f $(NGINX_LOG)
 	sudo nginx -t
 	sudo nginx -s reload
 	sudo systemctl restart nginx
 
 .PHONY: restart-mysql
-restart-mysql: copy-config-mysqld
+restart-mysql:
 	sudo rm -f $(SLOW_LOG)
 	sudo systemctl restart mysql
+	sudo systemctl restart mysqld
+	sudo systemctl restart mariadb
 
 .PHONY: pull-link
 pull-link: link-nginx link-mysql
@@ -118,15 +120,17 @@ pprof:
 
 .PHONY: slow
 slow:
-	sudo cat $(SLOW_LOG) | mysqldumpslow -s t -t 10 | curl -X POST -H "Content-Type: application/json" -d "{\"content\":\"$(cat)\"}" $(DISCORD_WEBHOOK_URL)
+	sudo mysqldumpslow -s t -t 10 > ~/temp/slowdump.txt
+	# | curl -X POST -H "Content-Type: application/json" -d "{\"content\":\"$(cat)\"}" $(DISCORD_WEBHOOK_URL)
+	curl -X POST -F txt=@$(HOME)/temp/slowdump.txt $(DISCORD_WEBHOOK_URL) -s -o /dev/null
 
 .PHONY: alp
 alp:
-	cat $(NGINX_LOG) | alp ltsv -m '/api/estate/[0-9]+,/api/chair/[0-9]+,/api/recommended_estate/[0-9]+,/api/estate/req_doc/[0-9]+,/api/chair/buy/[0-9]+' --sort avg -r
+	cat $(NGINX_LOG) | alp --avg -r
 
 .PHONY: alp-sum
 alp-sum:
-	cat $(NGINX_LOG) | alp ltsv -m '/api/estate/[0-9]+,/api/chair/[0-9]+,/api/recommended_estate/[0-9]+,/api/estate/req_doc/[0-9]+,/api/chair/buy/[0-9]+' --sort sum -r
+	cat $(NGINX_LOG) | alp --sum -r
 
 ################################################################################################
 
@@ -176,6 +180,12 @@ install-dstat:
 .PHONY: install-graphviz
 install-graphviz:
 	sudo apt install -y graphviz # TODO
+
+.PHONY: install-alp
+install-alp:
+	wget https://github.com/tkuchiki/alp/releases/download/v0.3.1/alp_linux_amd64.zip
+	unzip alp_linux_amd64.zip
+	sudo install ./alp /usr/local/bin
 
 .PHONY: install-slackcat
 install-slackcat:

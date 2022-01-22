@@ -11,6 +11,7 @@ import (
 	"os/exec"
 	"strings"
 	"time"
+	_ "net/http/pprof"
 
 	"github.com/dgrijalva/jwt-go"
 	"github.com/gorilla/sessions"
@@ -201,6 +202,10 @@ func init() {
 }
 
 func main() {
+	go func() {
+		http.ListenAndServe(":6060", nil)
+	}()
+
 	e := echo.New()
 	e.Debug = true
 	e.Logger.SetLevel(log.DEBUG)
@@ -238,7 +243,7 @@ func main() {
 		e.Logger.Fatalf("failed to connect db: %v", err)
 		return
 	}
-	db.SetMaxOpenConns(10)
+	db.SetMaxOpenConns(100)
 	defer db.Close()
 
 	postIsuConditionTargetBaseURL = os.Getenv("POST_ISUCONDITION_TARGET_BASE_URL")
