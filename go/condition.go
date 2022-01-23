@@ -300,8 +300,8 @@ func postIsuCondition(c echo.Context) error {
 	}
 	_, err = tx.NamedExec(
 		"INSERT INTO `isu_condition`"+
-			"	(`jia_isu_uuid`, `timestamp`, `is_sitting`, `condition`, `message`, `level`)"+
-			"	VALUES (:jia_isu_uuid, :timestamp, :is_sitting, :condition, :message, :level)",
+			"	(`jia_isu_uuid`, `timestamp`, `is_sitting`, `condition`, `message`, `condition_level`)"+
+			"	VALUES (:jia_isu_uuid, :timestamp, :is_sitting, :condition, :message, :condition_level)",
 		rows)
 	if err != nil {
 		c.Logger().Errorf("db error: %v", err)
