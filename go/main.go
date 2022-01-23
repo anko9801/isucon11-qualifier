@@ -292,6 +292,22 @@ func postInitialize(c echo.Context) error {
 		return c.NoContent(http.StatusInternalServerError)
 	}
 
+	isuList := []Isu{}
+	err = db.Select(&isuList, "SELECT * FROM `isu`")
+	if err != nil {
+		c.Logger().Errorf("db error : %v", err)
+		return c.NoContent(http.StatusInternalServerError)
+	}
+
+	for _, isu := range isuList {
+		_, err := os.Stat("/home/isucon/tmp/" + isu.JIAIsuUUID + ".jpg")
+		if err == nil {
+			continue
+		}
+		file, err := os.Create("/home/isucon/tmp/" + isu.JIAIsuUUID + ".jpg")
+		file.Write(isu.Image)
+	}
+
 	_, err = db.Exec(
 		"INSERT INTO `isu_association_config` (`name`, `url`) VALUES (?, ?) ON DUPLICATE KEY UPDATE `url` = VALUES(`url`)",
 		"jia_service_url",

@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -156,8 +157,9 @@ func postIsu(c echo.Context) error {
 	defer tx.Rollback()
 
 	_, err = tx.Exec("INSERT INTO `isu`"+
-		"	(`jia_isu_uuid`, `name`, `image`, `jia_user_id`) VALUES (?, ?, ?, ?)",
-		jiaIsuUUID, isuName, image, jiaUserID)
+		"	(`jia_isu_uuid`, `name`, `jia_user_id`) VALUES (?, ?, ?)",
+		jiaIsuUUID, isuName, jiaUserID)
+
 	if err != nil {
 		mysqlErr, ok := err.(*mysql.MySQLError)
 
@@ -168,6 +170,19 @@ func postIsu(c echo.Context) error {
 		c.Logger().Errorf("db error: %v", err)
 		return c.NoContent(http.StatusInternalServerError)
 	}
+
+	// image
+	file, err := os.Create("/home/isucon/tmp/" + jiaIsuUUID + ".jpg")
+	if err != nil {
+		return c.String(http.StatusNotFound, "not found: isu")
+	}
+	defer file.Close()
+	_, err = file.Write(image)
+	if err != nil {
+		c.Logger().Errorf("file error: %v", err)
+		return c.NoContent(http.StatusInternalServerError)
+	}
+	fmt.Printf("create %s", jiaIsuUUID)
 
 	targetURL := getJIAServiceURL(tx) + "/api/activate"
 	body := JIAServiceRequest{postIsuConditionTargetBaseURL, jiaIsuUUID}
@@ -214,6 +229,7 @@ func postIsu(c echo.Context) error {
 		c.Logger().Errorf("db error: %v", err)
 		return c.NoContent(http.StatusInternalServerError)
 	}
+	fmt.Println("update", jiaIsuUUID, err)
 
 	var isu Isu
 	err = tx.Get(
@@ -267,7 +283,7 @@ func getIsuID(c echo.Context) error {
 // GET /api/isu/:jia_isu_uuid/icon
 // ISUのアイコンを取得
 func getIsuIcon(c echo.Context) error {
-	jiaUserID, errStatusCode, err := getUserIDFromSession(c)
+	_, errStatusCode, err := getUserIDFromSession(c)
 	if err != nil {
 		if errStatusCode == http.StatusUnauthorized {
 			return c.String(http.StatusUnauthorized, "you are not signed in")
@@ -279,16 +295,16 @@ func getIsuIcon(c echo.Context) error {
 
 	jiaIsuUUID := c.Param("jia_isu_uuid")
 
-	var image []byte
-	err = db.Get(&image, "SELECT `image` FROM `isu` WHERE `jia_user_id` = ? AND `jia_isu_uuid` = ?",
-		jiaUserID, jiaIsuUUID)
+	_, err = os.Stat("/home/isucon/tmp/" + jiaIsuUUID + ".jpg")
+	fmt.Println("icon", jiaIsuUUID, err)
+	file, err := os.Open("/home/isucon/tmp/" + jiaIsuUUID + ".jpg")
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return c.String(http.StatusNotFound, "not found: isu")
-		}
-
-		c.Logger().Errorf("db error: %v", err)
-		return c.NoContent(http.StatusInternalServerError)
+		return c.String(http.StatusNotFound, "not found: isu")
+	}
+	defer file.Close()
+	image, err := ioutil.ReadAll(file)
+	if err != nil {
+		return c.String(http.StatusNotFound, "not found: isu")
 	}
 
 	return c.Blob(http.StatusOK, "", image)

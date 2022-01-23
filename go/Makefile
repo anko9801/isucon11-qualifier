@@ -44,7 +44,7 @@ setup: install-tools pull-link
 pullres: pull build
 
 .PHONY: build
-build: restart-nginx restart-mysql restart-app
+build: restart-nginx restart-mysql restart-app remove-data
 
 ################################################################################
 
@@ -52,6 +52,10 @@ build: restart-nginx restart-mysql restart-app
 restart-app:
 	cd ~/webapp/go && go build
 	sudo systemctl restart $(PROJECT).go.service
+
+.PHONY: remove-data
+remove-data:
+	ls $(HOME)/tmp/ | xargs -I{} rm $(HOME)/tmp/{}
 
 .PHONY: restart-nginx
 restart-nginx:
